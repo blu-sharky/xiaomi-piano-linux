@@ -180,6 +180,20 @@ WLANBT_FIRMWARE="$WORKSPACE/local/firmware/wifi-bt"
 ( cd "$WLANBT_FIRMWARE" && sha256sum --check --quiet SHA256SUMS ) \
     || die "wifi-bt firmware fails its SHA256SUMS manifest"
 cp -a "$WLANBT_FIRMWARE/ath12k" "$STAGE/firmware/"
+# peach (17cb:110e) runs its own WLAN.GNG image set from the stock NON-HLOS
+# partition, under the names the Peach ath12k variant asks for in
+# ath12k/PEACH/hw2.0 (board API 1: board.bin = the generic bdwlan.elf).
+PEACH_FIRMWARE="$WORKSPACE/local/firmware/non-hlos/image"
+PEACH_DIR="$STAGE/firmware/ath12k/PEACH/hw2.0"
+mkdir -p "$PEACH_DIR"
+for pair in peach/amss20.bin:amss.bin peach/phy_ucode20.elf:m3.bin \
+            peach/aux_ucode20.elf:aux_ucode.bin peach/regdb.bin:regdb.bin \
+            peach/bdwlan.elf:board.bin tmel_peach_20.elf:tmel.bin \
+            peach/qdss_trace_config_v2.cfg:qdss_trace_config.bin; do
+    [ -s "$PEACH_FIRMWARE/${pair%%:*}" ] \
+        || die "missing peach firmware: $PEACH_FIRMWARE/${pair%%:*}"
+    cp "$PEACH_FIRMWARE/${pair%%:*}" "$PEACH_DIR/${pair#*:}"
+done
 cp -a "$WLANBT_FIRMWARE/qca" "$STAGE/firmware/"
 # The piano BT controller is not WCN7850 (TLV product 0x19) but the stock
 # "Brahma" part: product 0x21, ROM 0x200 = brhbtfw20.tlv, whose NVM set is
