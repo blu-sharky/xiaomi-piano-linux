@@ -142,7 +142,7 @@ make -C "$KERNEL" ARCH=arm64 LLVM=1 O="$KERNEL_OUT" -j"$JOBS" modules_install \
 
 : > "$CLOSURE"
 for mod in pinctrl_sm8750 nt36532e_ts uinput \
-           pwrseq_qcom_wcn pci_pwrctrl_pwrseq \
+           gpio_shared_proxy pwrseq_qcom_wcn pci_pwrctrl_pwrseq \
            phy_qcom_qmp_pcie ath12k_wifi7 hci_uart; do
     modprobe -S "$KVER" -d "$MOD_INSTALL" --show-depends "$mod" \
         >> "$CLOSURE" 2>/dev/null \
