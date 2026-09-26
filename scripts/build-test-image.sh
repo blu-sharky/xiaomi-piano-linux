@@ -206,6 +206,9 @@ make -C "$KERNEL" ARCH=arm64 LLVM=1 O="$KERNEL_OUT" headers_install \
     INSTALL_HDR_PATH="$STAGE/uapi"
 "$DEBIAN/scripts/build-touch-view.sh" --uapi "$STAGE/uapi" \
     --sysroot "$SYSROOT" --output "$STAGE/piano-touch-view"
+"$DEBIAN/scripts/build-touch-view.sh" --uapi "$STAGE/uapi" \
+    --sysroot "$SYSROOT" --output "$STAGE/piano-bt-scan" \
+    --source "$DEBIAN/initramfs/bt-scan/piano-bt-scan.c"
 
 # --- debug initramfs -----------------------------------------------------------
 INITRAMFS="$KERNEL_OUT/initramfs.cpio.gz"
@@ -215,6 +218,7 @@ INITRAMFS_ARGS=(
     --busybox "$BUSYBOX" --dropbear-tree "$DROPBEAR_TREE"
     --output "$INITRAMFS" --kernel-version "$KVER"
     --firmware-dir "$STAGE/firmware" --touch-view "$STAGE/piano-touch-view"
+    --bt-scan "$STAGE/piano-bt-scan"
     --iw-tree "$TOOLS/iw/tree" \
 )
 for module in "${MODULES[@]}"; do
