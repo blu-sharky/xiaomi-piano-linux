@@ -131,8 +131,10 @@ case "$KVER" in *dirty*) die "kernel release $KVER is dirty" ;; esac
 # modules_install + modprobe --show-depends walks the real dependency graph,
 # so no hand-maintained .ko list can go stale (the 09-21 lesson: a missing
 # transitive dep silently killed pcie0).  pcie-qcom itself is a bool option
-# in this kernel (built-in): it stays inert because its probe defers until
-# the pci-pwrctrl-pwrseq module binds the wifi@0 pwrctrl device.
+# in this kernel (built-in): it stays inert until the initramfs WLAN phase
+# loads phy-qcom-qmp-pcie (the root-port PHY provider).  Socket/alias-bound
+# modules are seeded explicitly: qrtr + qrtr_mhi carry ath12k's QMI and are
+# never pulled in by symbol dependencies.
 MOD_INSTALL="$KERNEL_OUT/mod-closure"
 CLOSURE="$KERNEL_OUT/mod-closure.txt"
 rm -rf "$MOD_INSTALL"
@@ -143,7 +145,7 @@ make -C "$KERNEL" ARCH=arm64 LLVM=1 O="$KERNEL_OUT" -j"$JOBS" modules_install \
 : > "$CLOSURE"
 for mod in pinctrl_sm8750 nt36532e_ts uinput \
            gpio_shared_proxy pwrseq_qcom_wcn pci_pwrctrl_pwrseq \
-           phy_qcom_qmp_pcie ath12k_wifi7 hci_uart; do
+           phy_qcom_qmp_pcie qrtr qrtr_mhi ath12k_wifi7 hci_uart; do
     modprobe -S "$KVER" -d "$MOD_INSTALL" --show-depends "$mod" \
         >> "$CLOSURE" 2>/dev/null \
       || die "cannot resolve module closure for $mod (is it built?)"
