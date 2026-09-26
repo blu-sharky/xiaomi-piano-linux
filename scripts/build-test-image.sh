@@ -181,6 +181,13 @@ WLANBT_FIRMWARE="$WORKSPACE/local/firmware/wifi-bt"
     || die "wifi-bt firmware fails its SHA256SUMS manifest"
 cp -a "$WLANBT_FIRMWARE/ath12k" "$STAGE/firmware/"
 cp -a "$WLANBT_FIRMWARE/qca" "$STAGE/firmware/"
+# The piano BT controller is not WCN7850 (TLV product 0x19) but the stock
+# "Brahma" part: product 0x21, ROM 0x200 = brhbtfw20.tlv, whose NVM set is
+# brhbtnv20.{bin,bXX}.  The overlay names them via firmware-name.
+BTFM_FIRMWARE="$WORKSPACE/local/firmware/btfm/image"
+[ -s "$BTFM_FIRMWARE/brhbtfw20.tlv" ] && [ -s "$BTFM_FIRMWARE/brhbtnv20.bin" ] \
+    || die "missing stock BT firmware: $BTFM_FIRMWARE/brhbtfw20.tlv / brhbtnv20.bin"
+cp -a "$BTFM_FIRMWARE"/brhbtfw20.tlv "$BTFM_FIRMWARE"/brhbtnv20.* "$STAGE/firmware/qca/"
 make -C "$KERNEL" ARCH=arm64 LLVM=1 O="$KERNEL_OUT" headers_install \
     INSTALL_HDR_PATH="$STAGE/uapi"
 "$DEBIAN/scripts/build-touch-view.sh" --uapi "$STAGE/uapi" \
