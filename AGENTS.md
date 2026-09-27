@@ -85,6 +85,17 @@ Web-only resources (no clone needed): linux-msm SM8750 status page, pmOS wiki pa
 
 English for commit messages and all repo-tracked content (docs, script comments, component-repo commits and patch series).
 
+## Markdown format
+
+Markdown files (`*.md`) in the umbrella, debian-piano, piano-firmware and userspace/*
+repos are **not hard-wrapped**: every paragraph, list item and blockquote paragraph is a
+single source line, however long; a single newline inside running text is never allowed.
+Blocks are separated by exactly one blank line. A list item's continuation paragraph is
+its own indented line after a blank line. Fenced code blocks, tables, headings and
+front matter keep their content line by line. Let the editor soft-wrap. Exempt: files
+under `linux-piano/` (kernel conventions), `refer/`, `local/`, `out/`, vendored
+third-party files, and commit messages (wrap bodies at 72 columns as usual).
+
 ## Toolchain & build
 
 - Requirements: clang + lld (recommended; pass `LLVM=1`) or an aarch64 cross GCC; plus flex, bison, cpio, rsync.
