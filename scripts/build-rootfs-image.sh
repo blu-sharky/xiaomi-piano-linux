@@ -5,7 +5,7 @@ set -euo pipefail
 W=$(cd "$(dirname "$0")/.." && pwd)
 K=$W/linux-piano D=$W/debian-piano
 JOBS=$(nproc) OUTPUT=$D/out/gnome-image BASE='' KEYS='' SIZE=12G KERNEL_ONLY=0
-WITHOUT_FIRMWARE=0 DIAGNOSTIC=0
+WITHOUT_FIRMWARE=0 DIAGNOSTIC=0 FW_TREE=''
 while [ $# -gt 0 ]; do
     case "$1" in
         --jobs) JOBS=${2:?}; shift 2 ;;
@@ -15,12 +15,14 @@ while [ $# -gt 0 ]; do
         --image-size) SIZE=${2:?}; shift 2 ;;
         --kernel-only) KERNEL_ONLY=1; shift ;;
         --without-firmware) WITHOUT_FIRMWARE=1; shift ;;
+        --firmware-tree) FW_TREE=$(realpath "${2:?}"); shift 2 ;;
         --diagnostic) DIAGNOSTIC=1; shift ;;
-        -h|--help) echo 'Usage: scripts/build-rootfs-image.sh [--jobs N] [--output DIR] [--rootfs-build DIR] [--authorized-keys FILE] [--image-size 12G] [--kernel-only [--diagnostic]] [--without-firmware]'; exit 0 ;;
+        -h|--help) echo 'Usage: scripts/build-rootfs-image.sh [--jobs N] [--output DIR] [--rootfs-build DIR] [--authorized-keys FILE] [--image-size 12G] [--kernel-only [--diagnostic]] [--without-firmware | --firmware-tree DIR]'; exit 0 ;;
         *) echo "Unknown option: $1" >&2; exit 2 ;;
     esac
 done
 [[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || exit 2
+[ -z "$FW_TREE" ] || [ "$WITHOUT_FIRMWARE" = 0 ] || { echo '--firmware-tree conflicts with --without-firmware' >&2; exit 2; }
 [ "$DIAGNOSTIC" = 0 ] || [ "$KERNEL_ONLY" = 1 ] || { echo '--diagnostic requires --kernel-only' >&2; exit 2; }
 [ ! -e "$OUTPUT" ] || { echo 'Choose a fresh output directory' >&2; exit 1; }
 for cmd in clang ld.lld cpio depmod modinfo dtc python3 mkfs.ext4 dumpe2fs; do command -v "$cmd" >/dev/null; done
@@ -66,7 +68,13 @@ while IFS= read -r -d '' ko; do
 done < <(find "$STAGE/modules" -name '*.ko*' -print0)
 FW_ARGS=()
 if [ "$WITHOUT_FIRMWARE" = 0 ]; then
-    "$D/scripts/stage-piano-firmware.sh" "$W/local/firmware" "$STAGE/firmware"
+    if [ -n "$FW_TREE" ]; then
+        # A piano-firmware checkout: already in /usr/lib/firmware layout.
+        (cd "$FW_TREE" && sha256sum --check --quiet SHA256SUMS)
+        cp -a "$FW_TREE" "$STAGE/firmware"
+    else
+        "$D/scripts/stage-piano-firmware.sh" "$W/local/firmware" "$STAGE/firmware"
+    fi
     FW_ARGS=(--firmware-dir "$STAGE/firmware")
 fi
 "${MAKE[@]}" headers_install INSTALL_HDR_PATH="$STAGE/uapi"
@@ -109,7 +117,11 @@ cp "$O/.config" "$OUTPUT/kernel.config"
 } > "$OUTPUT/SOURCE-SHA256SUMS"
 {
     echo "Piano GNOME image set: without_firmware=$WITHOUT_FIRMWARE"
-    [ "$WITHOUT_FIRMWARE" = 1 ] || echo 'Contains proprietary firmware; do not publish'
+    if [ -n "$FW_TREE" ]; then
+        echo "firmware=piano-firmware $(git -C "$FW_TREE" rev-parse HEAD 2>/dev/null || echo unknown); see its README compliance statement"
+    elif [ "$WITHOUT_FIRMWARE" = 0 ]; then
+        echo 'Contains locally staged proprietary firmware; do not publish'
+    fi
     echo "kernel=$KVER kernel_only=$KERNEL_ONLY diagnostic=$DIAGNOSTIC"
     for repo in "$W" "$K" "$D"; do
         echo "source=$repo $(git -C "$repo" rev-parse HEAD)"

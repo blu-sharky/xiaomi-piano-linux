@@ -203,6 +203,6 @@ Two device lessons from the first boot (milestone-boot):
 - **Sparse userdata must use DONT_CARE for free space.** `img2simg` encodes zero blocks as FILL chunks and ABL writes them physically: a 12 GiB image became ~10 GiB of zero writes, which looks like a fastboot hang (an interrupted flash then leaves a corrupt root). `ext4-to-simg.py` stores only allocated blocks, like the stock userdata.img.
 - **No udev autoload on SoC buses.** The stock DT carries many nodes with unvalidated mainline drivers; coldplug autoloading froze the display right after `systemd-udev-trigger`. SoC drivers are loaded only by the ordered piano units.
 
-The Debian workflow now bundles rootfs/boot/dtbo from one build, without proprietary firmware, and uses persistent ccache. Its cross-repo refs must include both companion changes before default CI builds can succeed.
+The Debian workflow builds boot/dtbo/userdata from one build with the firmware from the separate piano-firmware repository (see its compliance statement), and uses persistent ccache. Its cross-repo refs must include both companion changes before default CI builds can succeed.
 
 Writing the whole userdata partition destroys Android data; leaving slot A's boot partitions untouched does not preserve that data or prevent Android from overwriting Debian on a subsequent Android boot. Never advertise on-device GNOME, WiFi association, BT pairing, battery or charging acceptance based only on a successful host build.

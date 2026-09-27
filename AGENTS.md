@@ -17,6 +17,7 @@ Port a complete Linux system (Debian first) to the Xiaomi Pad 8 Pro (codename **
 | `out/` | build outputs | ignored |
 | `linux-piano/` | kernel repo — submodule (vanilla v7.2.6 base, device branch `piano-7.2.6`) | submodule |
 | `debian-piano/` | rootfs/packaging repo — GitHub repo exists (empty); written from scratch, local clone created when implementation starts | ignored → future submodule |
+| `piano-firmware/` | firmware repo (WLAN/BT/touch blobs + compliance statement); consumed by debian-piano CI | ignored (separate public repo) |
 | `userspace/` | userspace shallow forks — created per-phase on demand (currently absent) | ignored → future submodules |
 
 Component repo specs are added under `docs/` as each repo is bootstrapped.
@@ -67,7 +68,7 @@ Web-only resources (no clone needed): linux-msm SM8750 status page, pmOS wiki pa
 
 ## Hard rules
 
-1. `local/` and any proprietary blob (firmware, keys, partition images) never enters any git repo. `.gitignore` has a safety net; bypassing requires `git add -f` plus a stated justification.
+1. `local/` and any proprietary blob (firmware, keys, partition images) never enters any git repo — with one deliberate exception: the dedicated public firmware repo `bluseliu50/piano-firmware` (user decision 2026-09-27). It holds only the device firmware the images need, each file unmodified with provenance and licence recorded in its README compliance statement; never keys, bootloader-chain images, partition images or user data. Code repos (umbrella, linux-piano, debian-piano, userspace/*) stay blob-free. `.gitignore` has a safety net; bypassing requires `git add -f` plus a stated justification.
 2. `out/` never enters git. All flashable artifacts must come out of `debian-piano` builds (reproducibility: no hand-assembled images).
 3. No AGENTS.md/CLAUDE.md/device-firmware files inside component repos.
 4. All userspace packages are shallow forks — nothing is consumed "directly from upstream". Shallow-fork discipline: track upstream on `main`; keep the piano diff as a minimal, ideally data-only patch set; `git diff upstream/main --stat` must stay reviewable at a glance; rebase regularly; upstream the diff as soon as upstream gains a profile/config mechanism; a growing logic diff means it is becoming a deep fork — refactor it back to data-only or accept the maintenance cost explicitly.
