@@ -15,7 +15,6 @@
 
 # ---------- Component repos (standalone git repos, ignored until converted to submodules) ----------
 /userspace/
-/piano-firmware/
 
 # ---------- Proprietary-binary safety net (blocks accidental adds; use `git add -f` plus a stated justification if ever needed) ----------
 *.mbn
