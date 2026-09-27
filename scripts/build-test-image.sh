@@ -204,7 +204,10 @@ cp -a "$WLANBT_FIRMWARE/qca" "$STAGE/firmware/"
 BTFM_FIRMWARE="$WORKSPACE/local/firmware/btfm/image"
 [ -s "$BTFM_FIRMWARE/brhbtfw20.tlv" ] && [ -s "$BTFM_FIRMWARE/brhbtnv20.bin" ] \
     || die "missing stock BT firmware: $BTFM_FIRMWARE/brhbtfw20.tlv / brhbtnv20.bin"
-cp -a "$BTFM_FIRMWARE"/brhbtfw20.tlv "$BTFM_FIRMWARE"/brhbtnv20.* "$STAGE/firmware/qca/"
+# Brahma is multi-subsystem: its PERI core (UART owner) needs its own patch
+# and NVM before the BT rampatch.
+cp -a "$BTFM_FIRMWARE"/brhbtfw20.tlv "$BTFM_FIRMWARE"/brhbtnv20.* \
+      "$BTFM_FIRMWARE"/brhperifw20.tlv "$BTFM_FIRMWARE"/brhperinv20.bin "$STAGE/firmware/qca/"
 make -C "$KERNEL" ARCH=arm64 LLVM=1 O="$KERNEL_OUT" headers_install \
     INSTALL_HDR_PATH="$STAGE/uapi"
 "$DEBIAN/scripts/build-touch-view.sh" --uapi "$STAGE/uapi" \
