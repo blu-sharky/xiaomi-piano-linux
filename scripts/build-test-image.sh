@@ -182,13 +182,16 @@ WLANBT_FIRMWARE="$WORKSPACE/local/firmware/wifi-bt"
 cp -a "$WLANBT_FIRMWARE/ath12k" "$STAGE/firmware/"
 # peach (17cb:110e) runs its own WLAN.GNG image set from the stock NON-HLOS
 # partition, under the names the Peach ath12k variant asks for in
-# ath12k/PEACH/hw2.0 (board API 1: board.bin = the generic bdwlan.elf).
+# ath12k/PEACH/hw2.0 (board API 1).  board.bin and regdb.bin follow the
+# stock driver's choice for this board (project P81) when the chip's OTP
+# board_id reads 0xff: bd_p81.elf and regdb_xiaomi.bin, not the generic
+# bdwlan.elf/regdb.bin.  ath12k logs board_id, which confirms the case.
 PEACH_FIRMWARE="$WORKSPACE/local/firmware/non-hlos/image"
 PEACH_DIR="$STAGE/firmware/ath12k/PEACH/hw2.0"
 mkdir -p "$PEACH_DIR"
 for pair in peach/amss20.bin:amss.bin peach/phy_ucode20.elf:m3.bin \
-            peach/aux_ucode20.elf:aux_ucode.bin peach/regdb.bin:regdb.bin \
-            peach/bdwlan.elf:board.bin tmel_peach_20.elf:tmel.bin \
+            peach/aux_ucode20.elf:aux_ucode.bin peach/regdb_xiaomi.bin:regdb.bin \
+            peach/bd_p81.elf:board.bin tmel_peach_20.elf:tmel.bin \
             peach/qdss_trace_config_v2.cfg:qdss_trace_config.bin; do
     [ -s "$PEACH_FIRMWARE/${pair%%:*}" ] \
         || die "missing peach firmware: $PEACH_FIRMWARE/${pair%%:*}"
