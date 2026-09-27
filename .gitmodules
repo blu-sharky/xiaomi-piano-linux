@@ -6,3 +6,7 @@
 	path = debian-piano
 	url = https://github.com/bluseliu50/debian-piano.git
 	branch = main
+[submodule "piano-firmware"]
+	path = piano-firmware
+	url = https://github.com/bluseliu50/piano-firmware.git
+	branch = main
