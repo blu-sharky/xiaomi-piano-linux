@@ -182,10 +182,27 @@ Device side: `usb0` at 10.42.0.2/24, telnetd on :23, dropbear attempted on :22 (
 
 - **M31 eUSB2 init sequence hangs the SoC bus** (silent async death, no oops). The USB2 consumer points at `usb_nop_phy` (legacy `usb-nop-xceiv`), so dwc3 runs on the bootloader-configured PHY state. Re-enabling `m31eusb2_phy_init()` requires first making the phy's register writes safe (BCR reset ordering / register-clock gating).
 - **RPMh RSC probe fails `-EINVAL`** on both `adc8000.rsc` and `af20000.rsc`; that keeps the interconnect providers out of `sync_state` and is why `dwc3-qcom` degrades past the usb-ddr icc path instead of blocking on it.
-- **dropbear is dynamically linked** (Debian build) and cannot exec in the initramfs (no libc); swap in a statically linked dropbear for real ssh.
+- **Historical dropbear failure:** the staged dynamic closure lacked `libgmp.so.10` (required by libtomcrypt). The GNOME/rootfs work adds `libgmp10` to the tools fetcher; refresh old `out/arm64-tools` trees. Authenticated arm64 dropbear SSH was exercised under QEMU user emulation.
 
 ### 8.4 Debugging scars worth remembering
 
 - `piano_fb_stamp()` framebuffer staging proved the crash point survived a hard hang (printk never flushes); full-screen background colour per step beat counting pixel squares. Removed again once the root cause (M31 init) was pinned down.
 - A shell syntax error in `beaconinit` (empty `if` body) kills pid 1 and panics the kernel with "Attempted to kill init" — always `bash -n` the init script before shipping it.
 - `build-initramfs.sh` must be invoked with full arguments (`--busybox/--dropbear-tree --output`); invoking it bare prints usage and exits while looking deceptively like a successful build.
+
+## 9. Debian GNOME on userdata (milestone-boot)
+
+From the workspace root, `scripts/build-rootfs-image.sh` builds a matched boot/dtbo/raw-ext4/sparse-userdata set. Full prerequisites, credentials, destructive userdata warnings and the operator flashing/acceptance procedure are in `debian-piano/README.md`. No script flashes the device.
+
+The kernel's `piano_rootfs.config` is a separate profile over `piano_defconfig`: `/pianoinit`, forced userdata root, simpledrm, no PAS/native MSM display. The legacy beacon test profile remains available. SMMU setup precedes switch_root; failures stop in key-only USB SSH rescue. GNOME uses software rendering, scale 2, no idle blanking/suspend. WLAN, Bluetooth and THP input start through ordered services instead of test loops.
+
+Stock ABL appends Android's `/init`, so a unique `/pianoinit` entry point is required. The rootfs-only overlay adds UFS host/PHY mainline bindings, clears the stock IOMMU dependency, and preserves ABL's storage rails. Its PHY module loads only after SID 0x60 is matched and the UFS CLKREF bit at 0x0f205008 is enabled.
+
+Two device lessons from the first boot (milestone-boot):
+
+- **Sparse userdata must use DONT_CARE for free space.** `img2simg` encodes zero blocks as FILL chunks and ABL writes them physically: a 12 GiB image became ~10 GiB of zero writes, which looks like a fastboot hang (an interrupted flash then leaves a corrupt root). `ext4-to-simg.py` stores only allocated blocks, like the stock userdata.img.
+- **No udev autoload on SoC buses.** The stock DT carries many nodes with unvalidated mainline drivers; coldplug autoloading froze the display right after `systemd-udev-trigger`. SoC drivers are loaded only by the ordered piano units.
+
+The Debian workflow now bundles rootfs/boot/dtbo from one build, without proprietary firmware, and uses persistent ccache. Its cross-repo refs must include both companion changes before default CI builds can succeed.
+
+Writing the whole userdata partition destroys Android data; leaving slot A's boot partitions untouched does not preserve that data or prevent Android from overwriting Debian on a subsequent Android boot. Never advertise on-device GNOME, WiFi association, BT pairing, battery or charging acceptance based only on a successful host build.

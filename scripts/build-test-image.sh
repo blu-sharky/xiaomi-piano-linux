@@ -164,50 +164,8 @@ echo "build-test-image: module closure = ${#MODULES[@]} modules"
 
 # --- firmware + helper staging (inside the ignored kernel out dir) ------------
 rm -rf "$STAGE"
-mkdir -p "$STAGE/firmware/novatek"
-for name in novatek_nt36532_piano_fw_csot.bin novatek_nt36532_piano_fw_boe.bin; do
-    [ -s "$TOUCH_FIRMWARE_SRC/$name" ] || die "missing touch firmware: $TOUCH_FIRMWARE_SRC/$name"
-    cp -a "$TOUCH_FIRMWARE_SRC/$name" "$STAGE/firmware/novatek/"
-done
-
-# WLAN/BT combo firmware: ath12k/WCN7850 (amss/m3/board-2/bdwlan) and the
-# qca hmt* HCI firmware/nvm set, verified against their SHA256SUMS manifest.
-WLANBT_FIRMWARE="$WORKSPACE/local/firmware/wifi-bt"
-[ -d "$WLANBT_FIRMWARE/ath12k/WCN7850/hw2.0" ] \
-    || die "missing WLAN firmware: $WLANBT_FIRMWARE/ath12k/WCN7850/hw2.0"
-[ -s "$WLANBT_FIRMWARE/qca/hmtbtfw20.tlv" ] \
-    || die "missing BT firmware: $WLANBT_FIRMWARE/qca/hmtbtfw20.tlv"
-( cd "$WLANBT_FIRMWARE" && sha256sum --check --quiet SHA256SUMS ) \
-    || die "wifi-bt firmware fails its SHA256SUMS manifest"
-cp -a "$WLANBT_FIRMWARE/ath12k" "$STAGE/firmware/"
-# peach (17cb:110e) runs its own WLAN.GNG image set from the stock NON-HLOS
-# partition, under the names the Peach ath12k variant asks for in
-# ath12k/PEACH/hw2.0 (board API 1).  board.bin and regdb.bin follow the
-# stock driver's choice for this board (project P81) when the chip's OTP
-# board_id reads 0xff: bd_p81.elf and regdb_xiaomi.bin, not the generic
-# bdwlan.elf/regdb.bin.  ath12k logs board_id, which confirms the case.
-PEACH_FIRMWARE="$WORKSPACE/local/firmware/non-hlos/image"
-PEACH_DIR="$STAGE/firmware/ath12k/PEACH/hw2.0"
-mkdir -p "$PEACH_DIR"
-for pair in peach/amss20.bin:amss.bin peach/phy_ucode20.elf:m3.bin \
-            peach/aux_ucode20.elf:aux_ucode.bin peach/regdb_xiaomi.bin:regdb.bin \
-            peach/bd_p81.elf:board.bin tmel_peach_20.elf:tmel.bin \
-            peach/qdss_trace_config_v2.cfg:qdss_trace_config.bin; do
-    [ -s "$PEACH_FIRMWARE/${pair%%:*}" ] \
-        || die "missing peach firmware: $PEACH_FIRMWARE/${pair%%:*}"
-    cp "$PEACH_FIRMWARE/${pair%%:*}" "$PEACH_DIR/${pair#*:}"
-done
-cp -a "$WLANBT_FIRMWARE/qca" "$STAGE/firmware/"
-# The piano BT controller is not WCN7850 (TLV product 0x19) but the stock
-# "Brahma" part: product 0x21, ROM 0x200 = brhbtfw20.tlv, whose NVM set is
-# brhbtnv20.{bin,bXX}.  The overlay names them via firmware-name.
-BTFM_FIRMWARE="$WORKSPACE/local/firmware/btfm/image"
-[ -s "$BTFM_FIRMWARE/brhbtfw20.tlv" ] && [ -s "$BTFM_FIRMWARE/brhbtnv20.bin" ] \
-    || die "missing stock BT firmware: $BTFM_FIRMWARE/brhbtfw20.tlv / brhbtnv20.bin"
-# Brahma is multi-subsystem: its PERI core (UART owner) needs its own patch
-# and NVM before the BT rampatch.
-cp -a "$BTFM_FIRMWARE"/brhbtfw20.tlv "$BTFM_FIRMWARE"/brhbtnv20.* \
-      "$BTFM_FIRMWARE"/brhperifw20.tlv "$BTFM_FIRMWARE"/brhperinv20.bin "$STAGE/firmware/qca/"
+mkdir -p "$STAGE"
+"$DEBIAN/scripts/stage-piano-firmware.sh" "$WORKSPACE/local/firmware" "$STAGE/firmware"
 make -C "$KERNEL" ARCH=arm64 LLVM=1 O="$KERNEL_OUT" headers_install \
     INSTALL_HDR_PATH="$STAGE/uapi"
 "$DEBIAN/scripts/build-touch-view.sh" --uapi "$STAGE/uapi" \
