@@ -5,7 +5,7 @@ set -euo pipefail
 W=$(cd "$(dirname "$0")/.." && pwd)
 K=$W/linux-piano D=$W/debian-piano
 JOBS=$(nproc) OUTPUT=$D/out/gnome-image BASE='' KEYS='' SIZE=12G KERNEL_ONLY=0
-WITHOUT_FIRMWARE=0 DIAGNOSTIC=0 FW_TREE=''
+WITHOUT_FIRMWARE=0 DIAGNOSTIC=0 FW_TREE='' MESA_DIR=''
 while [ $# -gt 0 ]; do
     case "$1" in
         --jobs) JOBS=${2:?}; shift 2 ;;
@@ -17,7 +17,8 @@ while [ $# -gt 0 ]; do
         --without-firmware) WITHOUT_FIRMWARE=1; shift ;;
         --firmware-tree) FW_TREE=$(realpath "${2:?}"); shift 2 ;;
         --diagnostic) DIAGNOSTIC=1; shift ;;
-        -h|--help) echo 'Usage: scripts/build-rootfs-image.sh [--jobs N] [--output DIR] [--rootfs-build DIR] [--authorized-keys FILE] [--image-size 12G] [--kernel-only [--diagnostic]] [--without-firmware | --firmware-tree DIR]'; exit 0 ;;
+        --mesa-dir) MESA_DIR=$(realpath "${2:?}"); shift 2 ;;
+        -h|--help) echo 'Usage: scripts/build-rootfs-image.sh [--jobs N] [--output DIR] [--rootfs-build DIR] [--authorized-keys FILE] [--image-size 12G] [--kernel-only [--diagnostic]] [--without-firmware | --firmware-tree DIR] [--mesa-dir DIR]'; exit 0 ;;
         *) echo "Unknown option: $1" >&2; exit 2 ;;
     esac
 done
@@ -39,7 +40,10 @@ fi
 if [ "$KERNEL_ONLY" = 0 ]; then
     if [ -z "$BASE" ]; then
         BASE=$OUTPUT/rootfs-build
-        "${ROOT[@]}" "$D/scripts/build-rootfs.sh" --suite trixie --output "$BASE" --authorized-keys "$KEYS"
+        # --mesa-dir: piano-mesa runtime packages (Adreno 830); without it the
+        # rootfs keeps Debian's Mesa, which does not know the GPU.
+        "${ROOT[@]}" "$D/scripts/build-rootfs.sh" --suite trixie --output "$BASE" --authorized-keys "$KEYS" \
+            ${MESA_DIR:+--mesa-dir "$MESA_DIR"}
     fi
     [ -f "$BASE/COMPLETE" ] || { echo 'Rootfs bootstrap incomplete' >&2; exit 1; }
     # A reused base gets the same key as the new rescue image.

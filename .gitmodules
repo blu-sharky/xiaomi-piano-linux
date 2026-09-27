@@ -10,3 +10,6 @@
 	path = piano-firmware
 	url = https://github.com/bluseliu50/piano-firmware.git
 	branch = main
+[submodule "piano-mesa"]
+	path = piano-mesa
+	url = https://github.com/bluseliu50/piano-mesa.git

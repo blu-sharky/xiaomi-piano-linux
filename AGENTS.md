@@ -18,6 +18,7 @@ Port a complete Linux system (Debian first) to the Xiaomi Pad 8 Pro (codename **
 | `linux-piano/` | kernel repo — submodule (vanilla v7.2.6 base, device branch `piano-7.2.6`) | submodule |
 | `debian-piano/` | rootfs/packaging repo — GitHub repo exists (empty); written from scratch, local clone created when implementation starts | ignored → future submodule |
 | `piano-firmware/` | firmware repo (WLAN/BT/touch blobs + compliance statement); consumed by debian-piano CI | submodule |
+| `piano-mesa/` | Mesa repo — submodule: Debian trixie-backports Mesa rebuilt with the Adreno 830 patches; debian-piano CI builds its `main` into the rootfs | submodule |
 | `userspace/` | userspace shallow forks — created per-phase on demand (currently absent) | ignored → future submodules |
 
 Component repo specs are added under `docs/` as each repo is bootstrapped.
