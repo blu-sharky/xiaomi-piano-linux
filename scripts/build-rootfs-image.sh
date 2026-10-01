@@ -5,7 +5,7 @@ set -euo pipefail
 W=$(cd "$(dirname "$0")/.." && pwd)
 K=$W/linux-piano D=$W/debian-piano
 JOBS=$(nproc) OUTPUT=$D/out/gnome-image BASE='' KEYS='' SIZE=12G KERNEL_ONLY=0
-WITHOUT_FIRMWARE=0 DIAGNOSTIC=0 FW_TREE='' MESA_DIR=''
+WITHOUT_FIRMWARE=0 DIAGNOSTIC=0 FW_TREE='' MESA_DIR='' SENSORS_DIR=''
 while [ $# -gt 0 ]; do
     case "$1" in
         --jobs) JOBS=${2:?}; shift 2 ;;
@@ -18,7 +18,8 @@ while [ $# -gt 0 ]; do
         --firmware-tree) FW_TREE=$(realpath "${2:?}"); shift 2 ;;
         --diagnostic) DIAGNOSTIC=1; shift ;;
         --mesa-dir) MESA_DIR=$(realpath "${2:?}"); shift 2 ;;
-        -h|--help) echo 'Usage: scripts/build-rootfs-image.sh [--jobs N] [--output DIR] [--rootfs-build DIR] [--authorized-keys FILE] [--image-size 12G] [--kernel-only [--diagnostic]] [--without-firmware | --firmware-tree DIR] [--mesa-dir DIR]'; exit 0 ;;
+        --sensors-dir) SENSORS_DIR=$(realpath "${2:?}"); shift 2 ;;
+        -h|--help) echo 'Usage: scripts/build-rootfs-image.sh [--jobs N] [--output DIR] [--rootfs-build DIR] [--authorized-keys FILE] [--image-size 12G] [--kernel-only [--diagnostic]] [--without-firmware | --firmware-tree DIR] [--mesa-dir DIR] [--sensors-dir DIR]'; exit 0 ;;
         *) echo "Unknown option: $1" >&2; exit 2 ;;
     esac
 done
@@ -42,8 +43,10 @@ if [ "$KERNEL_ONLY" = 0 ]; then
         BASE=$OUTPUT/rootfs-build
         # --mesa-dir: piano-mesa runtime packages (Adreno 830); without it the
         # rootfs keeps Debian's Mesa, which does not know the GPU.
+        # --sensors-dir: piano-sensors runtime packages; without them the
+        # image has no sensors (no screen rotation).
         "${ROOT[@]}" "$D/scripts/build-rootfs.sh" --suite trixie --output "$BASE" --authorized-keys "$KEYS" \
-            ${MESA_DIR:+--mesa-dir "$MESA_DIR"}
+            ${MESA_DIR:+--mesa-dir "$MESA_DIR"} ${SENSORS_DIR:+--userspace-dir "$SENSORS_DIR"}
     fi
     [ -f "$BASE/COMPLETE" ] || { echo 'Rootfs bootstrap incomplete' >&2; exit 1; }
     # A reused base gets the same key as the new rescue image.
@@ -106,7 +109,7 @@ for option in CONFIG_CMDLINE_FORCE=y CONFIG_EXT4_FS=y CONFIG_DRM_SIMPLEDRM=y \
 done
 "${MAKE[@]}" -j"$JOBS" Image
 [ "$(cat "$O/include/config/kernel.release")" = "$KVER" ]
-"$D/scripts/build-test-bootimg.sh" --kernel-dir "$O" --output-dir "$OUTPUT" --dtbo-source "$D/boot/dtbo-piano-display.dts" --mode rootfs
+"$D/scripts/build-test-bootimg.sh" --kernel-dir "$O" --output-dir "$OUTPUT" --dtbo-source "$D/boot/dtbo-piano-audio.dts" --mode rootfs
 if [ "$KERNEL_ONLY" = 0 ]; then
     "${ROOT[@]}" "$D/scripts/assemble-rootfs-image.sh" --rootfs "$BASE/rootfs" \
         --modules "$STAGE/modules" --kernel-release "$KVER" "${FW_ARGS[@]}" \

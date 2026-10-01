@@ -8,7 +8,7 @@ Audience: an agent (possibly a smaller model) continuing the Xiaomi Pad 8 Pro (p
 - ABL composes the **stock vendor DTB** (vendor_boot, `vbdtb-04` = "SunP v2 Alt. Thermal Profile") **plus our dtbo_b**. Our kernel never sees a mainline DTB. Every mainline node is an overlay fragment in `debian-piano/boot/dtbo-piano-touch-v2.dts` (which `#include`s the milestone-1 base `dtbo-piano-usb-nopd9.dts`).
 - `/soc` in the stock tree is **1-cell address / 1-cell size**. Mainline `reg = <0x0 A 0x0 S>` must be written `reg = <A S>`.
 - Overlay fragments: use `target-path` or `target = <&stock_label>`; new fragment numbers above the highest existing one (currently 228); labels you add yourself are fine inside the overlay. ABL rewrites phandles.
-- You can simulate exactly what ABL builds: `fdtoverlay -i local/dtb-downstream/vbdtb-04.dtb -o merged.dtb overlay.dtb` (extract `overlay.dtb` from the DTBO container: header 32 B + entry 32 B, entry holds size/offset big-endian). For the milestone-1 overlay this was verified byte-identical to the live `/sys/firmware/fdt`. Always check the merged tree before a device test.
+- You can simulate exactly what ABL builds: `fdtoverlay -i vbdtb-04.dtb -o merged.dtb overlay.dtb` (`vbdtb-04.dtb` extracted from the stock vendor_boot) (extract `overlay.dtb` from the DTBO container: header 32 B + entry 32 B, entry holds size/offset big-endian). For the milestone-1 overlay this was verified byte-identical to the live `/sys/firmware/fdt`. Always check the merged tree before a device test.
 - Display is `simpledrm` on the bootloader's splash framebuffer (3200x2136, stride 12800, a8b8g8r8). No native DRM/DSI driver runs; the panel is powered by ABL and must be left alone.
 
 ## 2. Things that reset the SoC (each cost a device round)
@@ -51,7 +51,7 @@ To extend: `piano-qup-smmu 0x436 0x423` (script accepts IDs). Verify with `piano
 
 ## 4. Working method (what made touch succeed in one session)
 
-1. **Read the vendor source first.** `refer/MiCode_piano/` holds the exact kernel, DT and drivers Xiaomi ships for piano. For a driver, find its build flags (`Android.mk`, `Kbuild`, `*.conf`) — e.g. touch is built with `CONFIG_TOUCH_THP_SUPPORT=1`, which changes the memory map. Other Xiaomi devices (sheng, p82) are only hints.
+1. **Read the vendor source first.** Xiaomi's MiCode kernel release for piano holds the exact kernel, DT and drivers shipped on the device. For a driver, find its build flags (`Android.mk`, `Kbuild`, `*.conf`) — e.g. touch is built with `CONFIG_TOUCH_THP_SUPPORT=1`, which changes the memory map. Other Xiaomi devices (sheng, p82) are only hints.
 2. **Validate data offline.** Firmware headers, overlays (fdtoverlay), userspace tools (static musl + `qemu-aarch64-static` with synthetic input) — before any device round.
 3. **Stage device work** so each step adds exactly one new hardware access, read-only first. Pattern: `piano-touch-test` (stages 0-4).
 4. **Use `devmem` read-only** to learn hardware state (pin mux, SMMU tables, clocks) — always bound-check addresses on the host first.
@@ -62,7 +62,7 @@ To extend: `piano-qup-smmu 0x436 0x423` (script accepts IDs). Verify with `piano
 ## 5. Tooling on the test image
 
 - Host: `nmcli connection up piano-ncm` (10.42.0.1/24, matched by MAC 02:66:77:88:99:aa). Device: telnet 10.42.0.2:23, HTTP of `/run` on :8080.
-- Host has no `nc`; drive telnet from Python (answer the busybox `ESC[6n` cursor query, see the session scripts in `out/`).
+- Host has no `nc`; drive telnet from Python (answer the busybox `ESC[6n` cursor query).
 - Serve files to the device with `python3 -m http.server --bind 10.42.0.1` and `wget` on the device; load modules with `insmod`/`modprobe`.
 - `piano-tests` menu, `piano-touch-test`, `piano-touch-view`, `piano-qup-smmu`, `piano-collect`.
 
@@ -72,17 +72,19 @@ Each item: goal, vendor reference, known facts, first safe step, risks.
 
 ### 6.1 Touch → desktop input (small)
 - Done: THP frames, simple tracker, uinput (`piano-touch-test --stage 5`).
-- Next: package a proper THP service. Upstream candidate `refer/ianchb_xiaomi-sheng-thp` (Apache-2.0, sheng) expects the same `/proc/nvt_thp_*` interface; piano differs in frame length (5192 vs 5160, read from poll info) and orientation (rows reversed). Fork per AGENTS.md rule 4 into `userspace/`, keep the diff data-only (a profile).
+- Next: package a proper THP service. Upstream candidate `ianchb/xiaomi-sheng-thp` (Apache-2.0, sheng) expects the same `/proc/nvt_thp_*` interface; piano differs in frame length (5192 vs 5160, read from poll info) and orientation (rows reversed). Fork per AGENTS.md rule 4 into `userspace/`, keep the diff data-only (a profile).
 - Stylus: frames of type 6/7/9/0x1d appear once `/proc/nvt_thp_stylus` is enabled; pen pressure comes over Bluetooth (needs BT first).
 
 ### 6.2 Keyboard + touchpad (medium)
-- Stock: `nanosic,803` at i2c 0x4c on QUP1 SE6 (`qupv3_se6_i2c`, i2c@a98000), IRQ gpio97, reset gpio188, status gpio95, sleep gpio3, supplies dvdd/vdd; driver in `refer/MiCode_piano` (search `nanosic`), sheng precedent `ianchb/xiaomi-sheng-keyboard-helper`.
+- Stock: `nanosic,803` at i2c 0x4c on QUP1 SE6 (`qupv3_se6_i2c`, i2c@a98000), IRQ gpio97, reset gpio188, status gpio95, sleep gpio3, supplies dvdd/vdd; driver in the MiCode piano sources (search `nanosic`), sheng precedent `ianchb/xiaomi-sheng-keyboard-helper`.
 - QUP1 streams are already matched. Needs: mainline `qcom,geni-i2c` binding for SE6 (same conversion as SE2 in the touch overlay), pins via the mainline TLMM node, the driver port.
 - Risk: the supplies are PMIC regulators — only read their state; do not enable/adjust rails until you know they are off-panel.
 
 ### 6.3 Battery / charging (MVP, hard)
-- Needs ADSP (pmic-glink + battmgr); the pd-mapper fix (`d029c35e6`) and PAS tolerance commits are already on the kernel line.
-- Blocker: booting ADSP kills the panel. Find out why before anything else (ADSP taking over a display rail or clock?). Test with the console on USB only and the panel treated as expendable for that round, with the user's consent. Audio stream IDs (§3) will also be needed.
+- ADSP runs from the `piano-adsp` service; with the native display path holding its power domains, starting it no longer blanks the panel.
+- Battery: two TI bq27z561 gauges (one per parallel cell) on QUP1 SE5 and QUP2 SE3, driven by mainline `bq27xxx` through the subsystem overlay. The capacity shown matches stock Android.
+- The ADSP firmware speaks Xiaomi's MCA property protocol on the battmgr glink owner, not Qualcomm battmgr. `piano_mca` (linux-piano) replaces `qcom_battmgr`, issues reads only, and reports the USB input as a `power_supply` (online when the bus voltage is above 4 V) *(USB input: unverified on the device)*.
+- Charging works at the ADSP/PMIC default limits. Do not write charger properties. The Xiaomi fast-charge protocol (MiPPS) is a separate, later item.
 
 ### 6.4 WLAN / BT (medium)
 - WLAN = "peach" PCI 17cb:110e (ath12k, WCN7850 path, commit on the kernel line). PCIe needs the SMMU streams 0x1400/0x1401 matched first.
@@ -90,17 +92,18 @@ Each item: goal, vendor reference, known facts, first safe step, risks.
 
 ### 6.5 Native display (DRM/DSI) and GPU (hard, MVP)
 - Needed for the GPU and for real power management of the panel.
-- Panel: the stock tree offers two Xiaomi P81 LCD panels (`dsi_p81_42_02_0a_dualdsi_dsc_lcd_video`, `..._35_02_0b_...`, dual-DSI DSC video) besides the NT37801 AMOLED that the early mainline DTS guessed; the 3200x2136 dual-DSI splash matches the P81 LCDs *(which of the two: unverified; the touch lcd-id pin read 1 = BOE)*. A panel driver must come from the MiCode display sources (`refer/MiCode_piano/vendor_opensource_display-drivers`, `vendor_qcom_opensource_display-devicetree`).
+- Panel: the stock tree offers two Xiaomi P81 LCD panels (`dsi_p81_42_02_0a_dualdsi_dsc_lcd_video`, `..._35_02_0b_...`, dual-DSI DSC video) besides the NT37801 AMOLED that the early mainline DTS guessed; the 3200x2136 dual-DSI splash matches the P81 LCDs *(which of the two: unverified; the touch lcd-id pin read 1 = BOE)*. A panel driver must come from the MiCode display sources (`vendor_opensource_display-drivers`, `vendor_qcom_opensource_display-devicetree`).
 - Display streams 0x800/0x801 are already matched by ABL.
 - GPU: `bp/gpu-v1` (XEC A830 backport) exists but is untested; the KGSL SMMU (0x3da0000) has the same unmatched-stream issue.
 
 ### 6.6 Sensors, suspend, rest
-- Sensors go through the ADSP (SSC), after 6.3.
+- Sensors work through the ADSP sensors hub (SSC): mainline `fastrpc` binds the stock node, and the userspace stack (Qualcomm's `adsprpcd` serving the sensors PD, libssc, a patched iio-sensor-proxy, the per-device registry import from persist) comes as Debian packages from the `piano-sensors` repository. The accelerometer mount matrix is `0, 1, 0; -1, 0, 0; 0, 0, 1`; GNOME auto-rotate works in all four orientations *(packaged build: unverified on the device)*.
+- Hall sensors: only the keyboard lid hall (gpio80, `SW_LID`) is exposed. The second hall (gpio11) is left out because a `SW_TABLET_MODE` switch stuck at 0 keeps mutter out of touch mode, which disables auto-rotate.
 - Suspend/resume needs the native display path first.
 
 ## 7. Before you finish a session
 
 - Commit in English, one logical change per commit, on a feature branch.
 - Record device results (with kernel release and image hashes from `MANIFEST.txt`) in a `docs/` file.
-- Update the workspace notes in `refer/GLM5.3_Report/STATUS.md`.
+- Update the workspace session notes, which live outside every repository.
 - Never leave the device with anything but stock partitions + dtbo_b.
