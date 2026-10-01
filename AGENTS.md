@@ -65,6 +65,7 @@ Although `refer/` is git-ignored, agents are allowed (and encouraged) to create 
 | Repository | URL | Why |
 |---|---|---|
 | alghiffaryfa19/Linux-xiaomi-sheng | https://github.com/alghiffaryfa19/Linux-xiaomi-sheng | Original build scripts that debian-sheng derives from (history) |
+| code002-2/Xiaomi-pad-6s-pro-Linux | https://github.com/code002-2/Xiaomi-pad-6s-pro-Linux | sheng user docs (branch `sheng`); its official-keyboard page shows the sheng cover needs a per-boot auth token from userspace (`sheng-devauth`). Only that page is kept locally (`refer/code002-2_Xiaomi-pad-6s-pro-Linux/`) |
 | Mu-Silicium | GitHub search "Mu-Silicium" | UEFI route alternative — NOT on our critical path (we boot via stock abl) |
 | xiaomi-8750 org (xuanyuan, SM8750 sibling) | https://github.com/orgs/xiaomi-8750/repositories | ROM-build infra for the SM8750 sibling device "xuanyuan". `proprietary_vendor_xiaomi_xuanyuan` is a cross-device firmware-naming reference (esp. a8xx GPU firmware). Browse on demand; do not bulk-clone the blobs repo. |
 | sm8750-mainline org | https://github.com/sm8750-mainline | Evaluated 2026-09 and dismissed: `linux` is a near-vanilla v6.16 fork with no piano/device/a8xx work; `LunarisOS-android` is an Android tree. Do not use as a base — our baseline is far ahead. |
