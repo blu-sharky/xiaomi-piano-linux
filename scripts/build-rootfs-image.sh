@@ -5,7 +5,7 @@ set -euo pipefail
 W=$(cd "$(dirname "$0")/.." && pwd)
 K=$W/linux-piano D=$W/debian-piano
 JOBS=$(nproc) OUTPUT=$D/out/gnome-image BASE='' KEYS='' SIZE=12G KERNEL_ONLY=0
-WITHOUT_FIRMWARE=0 DIAGNOSTIC=0 FW_TREE='' MESA_DIR='' SENSORS_DIR=''
+WITHOUT_FIRMWARE=0 DIAGNOSTIC=0 FW_TREE='' MESA_DIR='' SENSORS_DIR='' TOPOLOGY=''
 while [ $# -gt 0 ]; do
     case "$1" in
         --jobs) JOBS=${2:?}; shift 2 ;;
@@ -19,7 +19,8 @@ while [ $# -gt 0 ]; do
         --diagnostic) DIAGNOSTIC=1; shift ;;
         --mesa-dir) MESA_DIR=$(realpath "${2:?}"); shift 2 ;;
         --sensors-dir) SENSORS_DIR=$(realpath "${2:?}"); shift 2 ;;
-        -h|--help) echo 'Usage: scripts/build-rootfs-image.sh [--jobs N] [--output DIR] [--rootfs-build DIR] [--authorized-keys FILE] [--image-size 12G] [--kernel-only [--diagnostic]] [--without-firmware | --firmware-tree DIR] [--mesa-dir DIR] [--sensors-dir DIR]'; exit 0 ;;
+        --audioreach-topology) TOPOLOGY=$(realpath "${2:?}"); shift 2 ;;
+        -h|--help) echo 'Usage: scripts/build-rootfs-image.sh [--jobs N] [--output DIR] [--rootfs-build DIR] [--authorized-keys FILE] [--image-size 12G] [--kernel-only [--diagnostic]] [--without-firmware | --firmware-tree DIR] [--mesa-dir DIR] [--sensors-dir DIR] [--audioreach-topology DIR]'; exit 0 ;;
         *) echo "Unknown option: $1" >&2; exit 2 ;;
     esac
 done
@@ -83,6 +84,10 @@ if [ "$WITHOUT_FIRMWARE" = 0 ]; then
         "$D/scripts/stage-piano-firmware.sh" "$W/local/firmware" "$STAGE/firmware"
     fi
     FW_ARGS=(--firmware-dir "$STAGE/firmware")
+    # --audioreach-topology: linux-msm/audioreach-topology checkout (m4
+    # macros) for the piano AudioReach topology; without it the image has
+    # no audio graphs.
+    [ -z "$TOPOLOGY" ] || "$D/scripts/build-topology.sh" "$TOPOLOGY" "$STAGE/firmware"
 fi
 "${MAKE[@]}" headers_install INSTALL_HDR_PATH="$STAGE/uapi"
 "$D/scripts/build-touch-view.sh" --uapi "$STAGE/uapi" --sysroot "$TOOLS/musl-sysroot" --output "$STAGE/piano-touch-view"
