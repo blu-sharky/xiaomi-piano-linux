@@ -17,3 +17,7 @@
 	path = piano-sensors
 	url = https://github.com/blu-sharky/piano-sensors.git
 	branch = main
+[submodule "piano-mipps-auth"]
+	path = piano-mipps-auth
+	url = https://github.com/blu-sharky/piano-mipps-auth.git
+	branch = main

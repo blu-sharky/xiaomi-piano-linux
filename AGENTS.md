@@ -20,6 +20,7 @@ Port a complete Linux system (Debian first) to the Xiaomi Pad 8 Pro (codename **
 | `piano-firmware/` | firmware repo (WLAN/BT/touch blobs + compliance statement); consumed by debian-piano CI | submodule |
 | `piano-mesa/` | Mesa repo — submodule: Debian trixie-backports Mesa rebuilt with the Adreno 830 patches; debian-piano CI builds its `main` into the rootfs | submodule |
 | `piano-sensors/` | sensors repo — submodule: Debian's libssc and iio-sensor-proxy rebuilt with the piano patch (`+piano`), Debian's FastRPC userspace (`adsprpcd`), plus the `piano-sensors` integration package (first-boot read-only import of the per-device persist sensor registry); debian-piano CI builds its `main` into the rootfs | submodule |
+| `piano-mipps-auth/` | MiPPS repo — submodule: shallow fork of ianchb/xiaomi-mipps-auth (Xiaomi charger authentication over PD VDMs), with the piano node paths; drives the `xiaomi/` nodes of the piano_mca driver (`mipps_auth=1`) | submodule |
 | `userspace/` | userspace shallow forks — created per-phase on demand (currently absent) | ignored → future submodules |
 
 Component repo specs are added under `docs/` as each repo is bootstrapped.
