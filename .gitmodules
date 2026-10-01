@@ -1,19 +1,19 @@
 [submodule "linux-piano"]
 	path = linux-piano
-	url = https://github.com/bluseliu50/linux-piano.git
+	url = https://github.com/blu-sharky/linux-piano.git
 	branch = piano-7.2.6
 [submodule "debian-piano"]
 	path = debian-piano
-	url = https://github.com/bluseliu50/debian-piano.git
+	url = https://github.com/blu-sharky/debian-piano.git
 	branch = main
 [submodule "piano-firmware"]
 	path = piano-firmware
-	url = https://github.com/bluseliu50/piano-firmware.git
+	url = https://github.com/blu-sharky/piano-firmware.git
 	branch = main
 [submodule "piano-mesa"]
 	path = piano-mesa
-	url = https://github.com/bluseliu50/piano-mesa.git
+	url = https://github.com/blu-sharky/piano-mesa.git
 [submodule "piano-sensors"]
 	path = piano-sensors
-	url = https://github.com/bluseliu50/piano-sensors.git
+	url = https://github.com/blu-sharky/piano-sensors.git
 	branch = main
