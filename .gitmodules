@@ -13,3 +13,7 @@
 [submodule "piano-mesa"]
 	path = piano-mesa
 	url = https://github.com/bluseliu50/piano-mesa.git
+[submodule "piano-sensors"]
+	path = piano-sensors
+	url = https://github.com/bluseliu50/piano-sensors.git
+	branch = main

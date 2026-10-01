@@ -19,6 +19,7 @@ Port a complete Linux system (Debian first) to the Xiaomi Pad 8 Pro (codename **
 | `debian-piano/` | rootfs/packaging repo — GitHub repo exists (empty); written from scratch, local clone created when implementation starts | ignored → future submodule |
 | `piano-firmware/` | firmware repo (WLAN/BT/touch blobs + compliance statement); consumed by debian-piano CI | submodule |
 | `piano-mesa/` | Mesa repo — submodule: Debian trixie-backports Mesa rebuilt with the Adreno 830 patches; debian-piano CI builds its `main` into the rootfs | submodule |
+| `piano-sensors/` | sensors repo — submodule: Debian's libssc and iio-sensor-proxy rebuilt with the piano patch (`+piano`), Debian's FastRPC userspace (`adsprpcd`), plus the `piano-sensors` integration package (first-boot read-only import of the per-device persist sensor registry); debian-piano CI builds its `main` into the rootfs | submodule |
 | `userspace/` | userspace shallow forks — created per-phase on demand (currently absent) | ignored → future submodules |
 
 Component repo specs are added under `docs/` as each repo is bootstrapped.
@@ -53,6 +54,9 @@ Although `refer/` is git-ignored, agents are allowed (and encouraged) to create 
 |---|---|---|
 | AviderMin/ofrp_device_xiaomi_piano | https://github.com/AviderMin/ofrp_device_xiaomi_piano | Maintained OFRP recovery device tree for piano (branch fox_16.0; ADB, decryption, display, OTG all working). The recovery vehicle for the full-partition backup, and a source of boot-format/partition facts. Derived from YuKongA/twrp_device_xiaomi_sm8750_thales. |
 | XEC Mainline | https://github.com/Xlie-Electronic-Customs/linux | Adreno 830 kernel support (commit a6ec84af) for the GPU phase |
+| linux-msm/audioreach-topology | https://github.com/linux-msm/audioreach-topology | AudioReach topology sources (BSD-3). `SM8750-MTP` is built from `SM8550-HDK.m4`; the piano sound card needs its own `-tplg.bin` compiled from these |
+| DylanVanAssche/libssc | https://codeberg.org/DylanVanAssche/libssc | Qualcomm Sensor Core client library (GPL-3.0) used by iio-sensor-proxy's SSC backend; `ssccli` is the quickest sensor check |
+| qualcomm/fastrpc | https://github.com/qualcomm/fastrpc | Official FastRPC userspace (BSD-3); Debian packages it as `fastrpc-support`, whose `adsprpcd sensorspd` serves the piano sensors PD |
 | Mesa | https://gitlab.freedesktop.org/mesa/mesa | freedreno Gen8 userspace; GPU bug triage |
 | Qualcomm Adreno 830 UMD | qualcomm developer pages (search "Adreno 830 Linux UMD") | Official Vulkan 1.4 userspace fallback (a .deb download, not a clone) |
 
