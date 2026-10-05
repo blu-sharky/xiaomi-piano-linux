@@ -5,7 +5,7 @@ set -euo pipefail
 W=$(cd "$(dirname "$0")/.." && pwd)
 K=$W/linux-piano D=$W/debian-piano
 JOBS=$(nproc) OUTPUT=$D/out/gnome-image BASE='' KEYS='' SIZE=12G KERNEL_ONLY=0
-WITHOUT_FIRMWARE=0 DIAGNOSTIC=0 FW_TREE='' MESA_DIR='' SENSORS_DIR='' TOPOLOGY=''
+WITHOUT_FIRMWARE=0 DIAGNOSTIC=0 FW_TREE='' MESA_DIR='' SENSORS_DIR='' TOPOLOGY='' LOOPBACK=''
 while [ $# -gt 0 ]; do
     case "$1" in
         --jobs) JOBS=${2:?}; shift 2 ;;
@@ -20,7 +20,8 @@ while [ $# -gt 0 ]; do
         --mesa-dir) MESA_DIR=$(realpath "${2:?}"); shift 2 ;;
         --sensors-dir) SENSORS_DIR=$(realpath "${2:?}"); shift 2 ;;
         --audioreach-topology) TOPOLOGY=$(realpath "${2:?}"); shift 2 ;;
-        -h|--help) echo 'Usage: scripts/build-rootfs-image.sh [--jobs N] [--output DIR] [--rootfs-build DIR] [--authorized-keys FILE] [--image-size 12G] [--kernel-only [--diagnostic]] [--without-firmware | --firmware-tree DIR] [--mesa-dir DIR] [--sensors-dir DIR] [--audioreach-topology DIR]'; exit 0 ;;
+        --v4l2loopback) LOOPBACK=$(realpath "${2:?}"); shift 2 ;;
+        -h|--help) echo 'Usage: scripts/build-rootfs-image.sh [--jobs N] [--output DIR] [--rootfs-build DIR] [--authorized-keys FILE] [--image-size 12G] [--kernel-only [--diagnostic]] [--without-firmware | --firmware-tree DIR] [--mesa-dir DIR] [--sensors-dir DIR] [--audioreach-topology DIR] [--v4l2loopback DIR]'; exit 0 ;;
         *) echo "Unknown option: $1" >&2; exit 2 ;;
     esac
 done
@@ -71,6 +72,17 @@ find "$O" \( -name '*.mod.c' -o -name '*.ko' \) -delete
 "${MAKE[@]}" -j"$JOBS" Image modules
 KVER=$(cat "$O/include/config/kernel.release")
 "${MAKE[@]}" -j"$JOBS" modules_install INSTALL_MOD_PATH="$STAGE/modules" INSTALL_MOD_STRIP=1
+# --v4l2loopback: umlaeute/v4l2loopback checkout (GPL-2.0), built out of
+# tree against this kernel; without it the cameras are not offered to
+# applications (piano-camerad has nothing to feed). Built from a copy so
+# that no objects land in the checkout.
+if [ -n "$LOOPBACK" ]; then
+    cp -a "$LOOPBACK" "$STAGE/v4l2loopback"
+    rm -rf "$STAGE/v4l2loopback/.git"
+    "${MAKE[@]}" -j"$JOBS" M="$STAGE/v4l2loopback" modules
+    "${MAKE[@]}" M="$STAGE/v4l2loopback" modules_install INSTALL_MOD_PATH="$STAGE/modules" \
+        INSTALL_MOD_DIR=updates INSTALL_MOD_STRIP=1
+fi
 while IFS= read -r -d '' ko; do
     [[ "$(modinfo -F vermagic "$ko")" == "$KVER "* ]] || { echo "Stale module: $ko" >&2; exit 1; }
 done < <(find "$STAGE/modules" -name '*.ko*' -print0)
@@ -91,6 +103,8 @@ if [ "$WITHOUT_FIRMWARE" = 0 ]; then
 fi
 "${MAKE[@]}" headers_install INSTALL_HDR_PATH="$STAGE/uapi"
 "$D/scripts/build-touch-view.sh" --uapi "$STAGE/uapi" --sysroot "$TOOLS/musl-sysroot" --output "$STAGE/piano-touch-view"
+"$D/scripts/build-touch-view.sh" --uapi "$STAGE/uapi" --sysroot "$TOOLS/musl-sysroot" \
+    --source "$D/camera/piano-camerad.c" --output "$STAGE/piano-camerad"
 # Neither UFS host nor PHY may probe before the initramfs debug network.
 UFS_MODULES=()
 for module in phy_qcom_qmp_ufs ufs_qcom; do
@@ -114,11 +128,11 @@ for option in CONFIG_CMDLINE_FORCE=y CONFIG_EXT4_FS=y CONFIG_DRM_SIMPLEDRM=y \
 done
 "${MAKE[@]}" -j"$JOBS" Image
 [ "$(cat "$O/include/config/kernel.release")" = "$KVER" ]
-"$D/scripts/build-test-bootimg.sh" --kernel-dir "$O" --output-dir "$OUTPUT" --dtbo-source "$D/boot/dtbo-piano-cpufreq.dts" --mode rootfs
+"$D/scripts/build-test-bootimg.sh" --kernel-dir "$O" --output-dir "$OUTPUT" --dtbo-source "$D/boot/dtbo-piano-camera.dts" --mode rootfs
 if [ "$KERNEL_ONLY" = 0 ]; then
     "${ROOT[@]}" "$D/scripts/assemble-rootfs-image.sh" --rootfs "$BASE/rootfs" \
         --modules "$STAGE/modules" --kernel-release "$KVER" "${FW_ARGS[@]}" \
-        --touch-view "$STAGE/piano-touch-view" --busybox "$TOOLS/busybox/busybox" \
+        --touch-view "$STAGE/piano-touch-view" --camera-daemon "$STAGE/piano-camerad" --busybox "$TOOLS/busybox/busybox" \
         --output-dir "$OUTPUT" --image-size "$SIZE"
     cp "$BASE/build-manifest.txt" "$OUTPUT/packages.txt"
 fi
