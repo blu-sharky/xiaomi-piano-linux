@@ -128,7 +128,7 @@ for option in CONFIG_CMDLINE_FORCE=y CONFIG_EXT4_FS=y CONFIG_DRM_SIMPLEDRM=y \
 done
 "${MAKE[@]}" -j"$JOBS" Image
 [ "$(cat "$O/include/config/kernel.release")" = "$KVER" ]
-"$D/scripts/build-test-bootimg.sh" --kernel-dir "$O" --output-dir "$OUTPUT" --dtbo-source "$D/boot/dtbo-piano-camera.dts" --mode rootfs
+"$D/scripts/build-test-bootimg.sh" --kernel-dir "$O" --output-dir "$OUTPUT" --dtbo-source "$D/boot/dtbo-piano-power.dts" --mode rootfs
 if [ "$KERNEL_ONLY" = 0 ]; then
     "${ROOT[@]}" "$D/scripts/assemble-rootfs-image.sh" --rootfs "$BASE/rootfs" \
         --modules "$STAGE/modules" --kernel-release "$KVER" "${FW_ARGS[@]}" \
